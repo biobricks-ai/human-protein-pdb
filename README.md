@@ -1,35 +1,5 @@
-# How to build bricks
+This brick downloads `pdb.gz` files from RCSB PDB. To use files for docking, you must first ungzip the desired protein files.
 
-1. Create a brick named `{newbrick}` from this template
-```
-gh repo create biobricks-ai/{newbrick} -p biobricks-ai/brick-template --public
-gh repo clone biobricks-ai/{newbrick}
-cd newbrick
-```
+The list of PDB IDs is in `pdb_ids.txt`. They can be viewed in the [CSB PDB](https://www.rcsb.org/search?request=%7B%22query%22%3A%7B%22type%22%3A%22group%22%2C%22nodes%22%3A%5B%7B%22type%22%3A%22group%22%2C%22nodes%22%3A%5B%7B%22type%22%3A%22group%22%2C%22nodes%22%3A%5B%7B%22type%22%3A%22terminal%22%2C%22service%22%3A%22text%22%2C%22parameters%22%3A%7B%22attribute%22%3A%22rcsb_entity_source_organism.taxonomy_lineage.id%22%2C%22operator%22%3A%22exact_match%22%2C%22value%22%3A%229606%22%7D%7D%5D%2C%22logical_operator%22%3A%22and%22%7D%5D%2C%22logical_operator%22%3A%22and%22%2C%22label%22%3A%22text%22%7D%5D%2C%22logical_operator%22%3A%22and%22%7D%2C%22return_type%22%3A%22polymer_entity%22%2C%22request_options%22%3A%7B%22results_content_type%22%3A%5B%22experimental%22%5D%2C%22sort%22%3A%5B%7B%22sort_by%22%3A%22score%22%2C%22direction%22%3A%22desc%22%7D%5D%2C%22scoring_strategy%22%3A%22combined%22%2C%22paginate%22%3A%7B%22start%22%3A0%2C%22rows%22%3A25%7D%7D%2C%22request_info%22%3A%7B%22query_id%22%3A%22752ba6c3abbb41bec26fab65e4ad6061%22%7D%7D) website (link for specific query).
 
-2. Edit stages according to your needs:
-    Recommended scripts:
-    - ``01_download.sh``
-    - ``02_unzip.sh``
-    - ``03_build.sh`` calling a function to process individual files like ``csv2parquet.R`` or ``csv2parquet.py``
-
-3. Replace stages in dvc.yaml with your new stages
-    
-4. Build your brick
-```
-dvc repro # runs new stages
-```
-
-5. Push the data to biobricks.ai
-```
-dvc push -r s3.biobricks.ai 
-```
-
-6. Commit the brick
-```
-git add -A && git commit -m "some message"
-git push
-```
-
-7. Monitor the bricktools github action
-
+To run the brick, just run `dvc repro`.

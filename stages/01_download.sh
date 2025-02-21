@@ -4,22 +4,23 @@
 
 # Get local path
 localpath=$(pwd)
+srcpath=$(pwd)/src
 echo "Local path: $localpath"
 
-# Create the list directory to save list of remote files and directories
-listpath="$localpath/list"
-echo "List path: $listpath"
-mkdir -p $listpath
-cd $listpath;
+FILE=$srcpath/pdb_ids.txt
+BATCH_SCRIPT=$srcpath/batch_download.sh
 
-# Define the FTP base address
-export ftpbase=""
+# Ensure batch_download.sh is present
+if [ ! -f BATCH_SCRIPT ]; then
+    echo "Error: batch_download.sh not found. Please place it in the src directory." >&2
+    exit 1
+fi
 
-# Retrieve the list of files to download from FTP base address
-wget --no-remove-listing $ftpbase
-cat index.html | grep -Po '(?<=href=")[^"]*' | sort | cut -d "/" -f 10 > files.txt
-rm .listing
-rm index.html
+# Ensure pdb_ids.txt exists
+if [ ! -f "$FILE" ]; then
+    echo "Error: $FILE not found. Ensure it is generated before running this script." >&2
+    exit 1
+fi
 
 # Create the download directory
 export downloadpath="$localpath/download"
@@ -27,10 +28,8 @@ echo "Download path: $downloadpath"
 mkdir -p "$downloadpath"
 cd $downloadpath;
 
-# Download files in parallel
-cat $listpath/files.txt | xargs -P14 -n1 bash -c '
-  echo $0
-  wget -nH -q -nc -P $downloadpath $ftpbase$0
-'
+# Run batch_download.sh with the specified file
+chmod +x $BATCH_SCRIPT
+$BATCH_SCRIPT -f "$FILE" -p 2>&1 | tee download.log
 
 echo "Download done."
