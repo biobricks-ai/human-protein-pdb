@@ -34,7 +34,7 @@ EOF
 download() {
   url="$BASE_URL/pdb$1"
   out=$2/$1
-  echo "Downloading $url to $out"
+  echo -n "Downloading $url to $out"
   curl -s -f $url -o $out || echo "Failed to download $url"
 }
 
@@ -119,7 +119,7 @@ do
   progress=$((count * 100 / total))
   bar=$(printf "#%.0s" $(seq 1 $((progress / 2))))
   spaces=$(printf " %.0s" $(seq 1 $((50 - ${#bar}))))
-  echo -ne "\r[$bar$spaces] $progress%"
+  echo -ne "\r[$bar$spaces] $progress% "
 
 done
 
