@@ -75,6 +75,9 @@ contents=$(cat $listfile)
 # see https://stackoverflow.com/questions/918886/how-do-i-split-a-string-on-a-delimiter-in-bash#tab-top
 IFS=',' read -ra tokens <<< "$contents"
 
+total=${#tokens[@]}
+count=0
+
 for token in "${tokens[@]}"
 do
   if [ "$cif" == true ]
@@ -109,6 +112,12 @@ do
   then
     download ${token}_mr.str.gz $outdir
   fi
+
+  ((count++))
+  progress=$((count * 100 / total))
+  bar=$(printf "#%.0s" $(seq 1 $((progress / 2))))
+  spaces=$(printf " %.0s" $(seq 1 $((50 - ${#bar}))))
+  echo -ne "\r[$bar$spaces] $progress%"
 
 done
 

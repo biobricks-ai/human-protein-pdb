@@ -11,7 +11,7 @@ FILE=$srcpath/pdb_ids.txt
 BATCH_SCRIPT=$srcpath/batch_download.sh
 
 # Ensure batch_download.sh is present
-if [ ! -f BATCH_SCRIPT ]; then
+if [ ! -f "$BATCH_SCRIPT" ]; then
     echo "Error: batch_download.sh not found. Please place it in the src directory." >&2
     exit 1
 fi
