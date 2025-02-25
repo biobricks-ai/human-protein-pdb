@@ -1,2 +1,16 @@
 schema: '2.0'
-stages: {}
+stages:
+  download:
+    cmd: stages/01_download.sh
+    deps:
+    - path: stages/01_download.sh
+      hash: md5
+      md5: 17fa73df98dfe3caa1c58a7c5b4c611a
+      size: 835
+      isexec: true
+    outs:
+    - path: download
+      hash: md5
+      md5: d34b61636944b018992c51d0a4f98e99.dir
+      size: 76793
+      nfiles: 2

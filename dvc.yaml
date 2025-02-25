@@ -15,4 +15,3 @@ stages:
       - stages/01_download.sh
     outs:
       - download
-      - list

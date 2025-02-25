@@ -10,7 +10,8 @@ then
 fi
 
 PROGNAME=$0
-BASE_URL="https://files.rcsb.org/download"
+#BASE_URL="https://files.rcsb.org/download"
+BASE_URL="https://files.rcsb.org/pub/pdb/data/structures/all/pdb"
 
 usage() {
   cat << EOF >&2
@@ -31,7 +32,7 @@ EOF
 }
 
 download() {
-  url="$BASE_URL/$1"
+  url="$BASE_URL/pdb$1"
   out=$2/$1
   echo "Downloading $url to $out"
   curl -s -f $url -o $out || echo "Failed to download $url"
@@ -86,7 +87,8 @@ do
   fi
   if [ "$pdb" == true ]
   then
-    download ${token}.pdb.gz $outdir
+    #download ${token}.pdb.gz $outdir
+    download ${token}.ent.gz $outdir
   fi
   if [ "$pdb1" == true ]
   then
