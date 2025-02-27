@@ -7,7 +7,8 @@ localpath=$(pwd)
 srcpath=$(pwd)/src
 echo "Local path: $localpath"
 
-FILE=$srcpath/pdb_ids.txt
+#FILE=$srcpath/pdb_ids.txt
+FILE=$srcpath/missing_pdb_ids.txt
 BATCH_SCRIPT=$srcpath/batch_download.sh
 
 # Ensure batch_download.sh is present
