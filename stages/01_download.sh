@@ -7,8 +7,8 @@ localpath=$(pwd)
 srcpath=$(pwd)/src
 echo "Local path: $localpath"
 
-#FILE=$srcpath/pdb_ids.txt
-FILE=$srcpath/missing_pdb_ids.txt
+FILE=$srcpath/pdb_ids.txt
+#FILE=$srcpath/missing_pdb_ids.txt
 BATCH_SCRIPT=$srcpath/batch_download.sh
 
 # Ensure batch_download.sh is present
@@ -31,6 +31,8 @@ cd $downloadpath;
 
 # Run batch_download.sh with the specified file
 chmod +x $BATCH_SCRIPT
-$BATCH_SCRIPT -f "$FILE" -p 2>&1 | tee download.log
+#$BATCH_SCRIPT -f "$FILE" -p 2>&1 | tee download.log
+#python $srcpath/batch_download.py -f "$FILE" -p --rsync 2>&1 | tee download.log
+python $srcpath/batch_download.py -f "$FILE" -p 2>&1 | tee download.log
 
 echo "Download done."
