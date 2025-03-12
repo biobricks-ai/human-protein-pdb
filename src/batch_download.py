@@ -15,15 +15,16 @@ failed_pdbs = set()
 
 # Centralized file extensions mapping for different file types
 def get_extensions():
+    base_name = "pdb{pdb_id}"
     return {
-        'cif': f"pdb{{pdb_id}}.cif.gz",
-        'pdb': f"pdb{{pdb_id}}.ent.gz",
-        'pdb1': f"pdb{{pdb_id}}.pdb1.gz",
-        'cifassembly1': f"pdb{{pdb_id}}-assembly1.cif.gz",
-        'xml': f"pdb{{pdb_id}}.xml.gz",
-        'sf': f"pdb{{pdb_id}}-sf.cif.gz",
-        'mr': f"pdb{{pdb_id}}.mr.gz",
-        'mrstr': f"pdb{{pdb_id}}_mr.str.gz"
+        'cif': f"{base_name}.cif.gz",
+        'pdb': f"{base_name}.ent.gz",
+        'pdb1': f"{base_name}.pdb1.gz",
+        'cifassembly1': f"{base_name}-assembly1.cif.gz",
+        'xml': f"{base_name}.xml.gz",
+        'sf': f"{base_name}-sf.cif.gz",
+        'mr': f"{base_name}.mr.gz",
+        'mrstr': f"{base_name}_mr.str.gz"
     }
 
 # Query RCSB API to get experimental methods for a given PDB ID
@@ -46,10 +47,8 @@ def get_experiment_type(pdb_id):
 # Check if a structure should be skipped based on being EM-only (no atomic model)
 def should_skip_due_to_em(methods):
     methods = set(m.upper() for m in methods)
-    if methods == {"ELECTRON MICROSCOPY"}:
-        return True  # Skip pure EM entries
-    return False
-
+    return methods == {"ELECTRON MICROSCOPY"}  # Skip pure EM entries
+    
 # Check if a specific file type exists for a PDB ID before downloading
 # This reduces unnecessary 403 errors
 def file_type_available(pdb_id, filetype):
