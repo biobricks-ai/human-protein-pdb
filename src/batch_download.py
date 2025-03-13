@@ -48,7 +48,7 @@ def get_experiment_type(pdb_id):
 def should_skip_due_to_em(methods):
     methods = set(m.upper() for m in methods)
     return methods == {"ELECTRON MICROSCOPY"}  # Skip pure EM entries
-    
+
 # Check if a specific file type exists for a PDB ID before downloading
 # This reduces unnecessary 403 errors
 def file_type_available(pdb_id, filetype):
@@ -72,7 +72,6 @@ def file_already_downloaded(pdb_id, filetype, outdir):
 # Download a file via HTTP
 def download_file(pdb_id, filetype, outdir):
     if file_already_downloaded(pdb_id, filetype, outdir):
-        #print(f"Skipping {pdb_id} - {filetype} already exists")
         return
 
     extensions = get_extensions()
@@ -81,8 +80,12 @@ def download_file(pdb_id, filetype, outdir):
     outpath = os.path.join(outdir, filename)
 
     if not file_type_available(pdb_id, filetype):
-        print(f"Skipping {pdb_id} - {filetype} file does not exist")
-        failed_pdbs.add(pdb_id)
+        if filetype == 'pdb':
+            print(f"{pdb_id} - pdb file not found, attempting to download cif format instead.")
+            download_file(pdb_id, 'cif', outdir)
+        else:
+            print(f"Skipping {pdb_id} - {filetype} file does not exist")
+            failed_pdbs.add(pdb_id)
         return
 
     for attempt in range(3):
