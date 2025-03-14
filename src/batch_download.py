@@ -2,6 +2,7 @@
 
 import os
 import sys
+import bisect
 import time
 import requests
 import argparse
@@ -62,17 +63,37 @@ def file_type_available(pdb_id, filetype):
     response = requests.head(url)
     return response.status_code == 200
 
-# Check if file already exists locally to avoid redundant downloads
-def file_already_downloaded(pdb_id, filetype, outdir):
-    extensions = get_extensions()
-    filename = extensions[filetype].format(pdb_id=pdb_id)
-    outpath = os.path.join(outdir, filename)
-    return os.path.exists(outpath)
+# # Check if file already exists locally to avoid redundant downloads
+# def file_already_downloaded(pdb_id, filetype, outdir):
+#     extensions = get_extensions()
+#     filename = extensions[filetype].format(pdb_id=pdb_id)
+#     outpath = os.path.join(outdir, filename)
+#     return os.path.exists(outpath)
+
+def build_sorted_existing_pdb_ids(directory):
+    """
+    Scans the directory for existing PDB files and returns a sorted list of unique PDB IDs.
+    The ID is extracted from the part of the filename after 'pdb' and before the first '.'.
+    """
+    pdb_ids = set()
+    for filename in os.listdir(directory):
+        if filename.startswith('pdb') and filename.endswith('.gz'):
+            # Extract everything after 'pdb' and before the first '.'
+            id_part = filename[3:].split('.')[0].lower()
+            pdb_ids.add(id_part)
+    return sorted(pdb_ids)
+
+def is_pdb_id_downloaded(pdb_id, sorted_pdb_ids):
+    """
+    Checks if a PDB ID is already in the sorted list using binary search.
+    """
+    index = bisect.bisect_left(sorted_pdb_ids, pdb_id)
+    return index < len(sorted_pdb_ids) and sorted_pdb_ids[index] == pdb_id
 
 # Download a file via HTTP
 def download_file(pdb_id, filetype, outdir):
-    if file_already_downloaded(pdb_id, filetype, outdir):
-        return
+    # if file_already_downloaded(pdb_id, filetype, outdir):
+    #     return
 
     extensions = get_extensions()
     filename = extensions[filetype].format(pdb_id=pdb_id)
@@ -104,9 +125,9 @@ def download_file(pdb_id, filetype, outdir):
 
 # Download a file using rsync
 def rsync_file(pdb_id, filetype, outdir):
-    if file_already_downloaded(pdb_id, filetype, outdir):
-        print(f"Skipping {pdb_id} - {filetype} already exists")
-        return
+    # if file_already_downloaded(pdb_id, filetype, outdir):
+    #     print(f"Skipping {pdb_id} - {filetype} already exists")
+    #     return
 
     extensions = get_extensions()
     filename = extensions[filetype].format(pdb_id=pdb_id)
@@ -142,10 +163,15 @@ def main():
     with open(args.f, 'r') as f:
         pdb_ids = f.read().strip().split(',')
 
+    sorted_pdb_ids = build_sorted_existing_pdb_ids(args.o)
+
     for pdb_id in tqdm(pdb_ids, desc="Processing PDB IDs", unit="file"):
         experiment_methods = get_experiment_type(pdb_id)
         if should_skip_due_to_em(experiment_methods):
             print(f"Skipping {pdb_id} - Electron Microscopy only (no atomic model)")
+            continue
+
+        if is_pdb_id_downloaded(pdb_id, sorted_pdb_ids):
             continue
 
         download_func = rsync_file if args.rsync else download_file
