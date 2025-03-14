@@ -83,6 +83,19 @@ def build_sorted_existing_pdb_ids(directory):
             pdb_ids.add(id_part)
     return sorted(pdb_ids)
 
+def build_existing_pdb_id_set(directory):
+    """
+    Scans the directory for existing PDB files and returns a set of unique PDB IDs.
+    The ID is extracted from the part of the filename after 'pdb' and before the first '.'.
+    """
+    pdb_ids = set()
+    for filename in os.listdir(directory):
+        if filename.startswith('pdb') and filename.endswith('.gz'):
+            # Extract everything after 'pdb' and before the first '.'
+            id_part = filename[3:].split('.')[0].lower()
+            pdb_ids.add(id_part)
+    return pdb_ids
+
 def is_pdb_id_downloaded(pdb_id, sorted_pdb_ids):
     """
     Checks if a PDB ID is already in the sorted list using binary search.
@@ -164,6 +177,7 @@ def main():
         pdb_ids = f.read().strip().split(',')
 
     sorted_pdb_ids = build_sorted_existing_pdb_ids(args.o)
+    # existing_pdb_ids = build_existing_pdb_id_set(args.o)
 
     for pdb_id in tqdm(pdb_ids, desc="Processing PDB IDs", unit="file"):
         experiment_methods = get_experiment_type(pdb_id)
@@ -172,6 +186,7 @@ def main():
             continue
 
         if is_pdb_id_downloaded(pdb_id, sorted_pdb_ids):
+        # if pdb_id in existing_pdb_ids:
             continue
 
         download_func = rsync_file if args.rsync else download_file
