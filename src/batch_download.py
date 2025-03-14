@@ -96,18 +96,19 @@ def build_existing_pdb_id_set(directory):
             pdb_ids.add(id_part)
     return pdb_ids
 
-def is_pdb_id_downloaded(pdb_id, sorted_pdb_ids):
-    """
-    Checks if a PDB ID is already in the sorted list using binary search.
-    """
-    index = bisect.bisect_left(sorted_pdb_ids, pdb_id)
-    return index < len(sorted_pdb_ids) and sorted_pdb_ids[index] == pdb_id
+def is_pdb_id_downloaded(pdb_id, downloaded_pdb_ids):
+    # Checks if a PDB ID is already in the set of downloaded IDs
+    if isinstance(downloaded_pdb_ids, set):
+        return pdb_id in downloaded_pdb_ids
+    # Checks if a PDB ID is already in the sorted list using binary search.
+    elif isinstance(downloaded_pdb_ids, list):
+        index = bisect.bisect_left(downloaded_pdb_ids, pdb_id)
+        return index < len(downloaded_pdb_ids) and downloaded_pdb_ids[index] == pdb_id
+    else:
+        raise ValueError("Invalid type for downloaded_pdb_ids")
 
 # Download a file via HTTP
 def download_file(pdb_id, filetype, outdir):
-    # if file_already_downloaded(pdb_id, filetype, outdir):
-    #     return
-
     extensions = get_extensions()
     filename = extensions[filetype].format(pdb_id=pdb_id)
     url = f"{BASE_URL}/{filetype}/{filename}"
@@ -138,10 +139,6 @@ def download_file(pdb_id, filetype, outdir):
 
 # Download a file using rsync
 def rsync_file(pdb_id, filetype, outdir):
-    # if file_already_downloaded(pdb_id, filetype, outdir):
-    #     print(f"Skipping {pdb_id} - {filetype} already exists")
-    #     return
-
     extensions = get_extensions()
     filename = extensions[filetype].format(pdb_id=pdb_id)
     remote_path = f"rsync.wwpdb.org::ftp/data/structures/all/{filetype}/{filename}"
@@ -169,6 +166,7 @@ def main():
     parser.add_argument('-m', action='store_true', help="Download mr.gz files")
     parser.add_argument('-r', action='store_true', help="Download mr.str.gz files")
     parser.add_argument('--rsync', action='store_true', help="Use rsync instead of HTTP")
+    parser.add_argument('--use_set', action='store_true', help="Use set instead of sorted list for already downloaded PDB IDs")
 
     args = parser.parse_args()
     os.makedirs(args.o, exist_ok=True)
@@ -176,8 +174,33 @@ def main():
     with open(args.f, 'r') as f:
         pdb_ids = f.read().strip().split(',')
 
-    sorted_pdb_ids = build_sorted_existing_pdb_ids(args.o)
-    # existing_pdb_ids = build_existing_pdb_id_set(args.o)
+    if args.use_set:
+        downloaded_pdb_ids = build_existing_pdb_id_set(args.o)
+    else:
+        downloaded_pdb_ids = build_sorted_existing_pdb_ids(args.o)
+
+    download_func_base = rsync_file if args.rsync else download_file
+    
+    # Map arguments to their corresponding file extensions
+    arg_to_extension = {
+        'c': 'cif',
+        'p': 'pdb',
+        'a': 'pdb1',
+        'A': 'cifassembly1',
+        'x': 'xml',
+        's': 'sf',
+        'm': 'mr',
+        'r': 'mrstr'
+    }
+    
+    # Select the first active extension argument
+    extension = next((ext for arg, ext in arg_to_extension.items() if getattr(args, arg)), None)
+    
+    if not extension:
+        print("No file type selected for download. Use flags like -c, -p, etc.")
+        sys.exit(1)
+
+    download_func = lambda pdb_id: download_func_base(pdb_id, extension, args.o)
 
     for pdb_id in tqdm(pdb_ids, desc="Processing PDB IDs", unit="file"):
         experiment_methods = get_experiment_type(pdb_id)
@@ -185,28 +208,10 @@ def main():
             print(f"Skipping {pdb_id} - Electron Microscopy only (no atomic model)")
             continue
 
-        if is_pdb_id_downloaded(pdb_id, sorted_pdb_ids):
-        # if pdb_id in existing_pdb_ids:
+        if is_pdb_id_downloaded(pdb_id, downloaded_pdb_ids):
             continue
 
-        download_func = rsync_file if args.rsync else download_file
-
-        if args.c:
-            download_func(pdb_id, 'cif', args.o)
-        if args.p:
-            download_func(pdb_id, 'pdb', args.o)
-        if args.a:
-            download_func(pdb_id, 'pdb1', args.o)
-        if args.A:
-            download_func(pdb_id, 'cifassembly1', args.o)
-        if args.x:
-            download_func(pdb_id, 'xml', args.o)
-        if args.s:
-            download_func(pdb_id, 'sf', args.o)
-        if args.m:
-            download_func(pdb_id, 'mr', args.o)
-        if args.r:
-            download_func(pdb_id, 'mrstr', args.o)
+        download_func(pdb_id)
 
     if failed_pdbs:
         with open('failed_pdb_ids.txt', 'w') as f:
