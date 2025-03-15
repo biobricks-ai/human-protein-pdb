@@ -4,6 +4,8 @@ import glob
 import os
 import tempfile
 import httpx
+import gzip
+import shutil
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
@@ -17,6 +19,30 @@ class DockingUniProtRequest(BaseModel):
     ligand: str      # The ligand as a SMILES string.
     callback_url: str  # The URL where the client will receive the docking results.
 
+def unzip_ent_gz(uniprot_id, source_dir, dest_dir):
+    """
+    Unzips a .ent.gz file to .pdb.
+    """
+    ent_gz_file = os.path.join(source_dir, f"{uniprot_id}.ent.gz")
+    pdb_file = os.path.join(dest_dir, f"{uniprot_id}.pdb")
+
+    if not os.path.exists(pdb_file):
+        if not os.path.exists(ent_gz_file):
+            raise FileNotFoundError(f"Source file {ent_gz_file} not found.")
+        
+        with gzip.open(ent_gz_file, 'rb') as f_in:
+            with open(pdb_file, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+    
+    return pdb_file
+
+def cleanup_pdb_file(pdb_file):
+    """
+    Deletes the .pdb file to save space.
+    """
+    if os.path.exists(pdb_file):
+        os.remove(pdb_file)
+
 @app.post("/start_docking_uniprot")
 async def start_docking_uniprot(request: DockingUniProtRequest, background_tasks: BackgroundTasks):
     """
@@ -26,9 +52,17 @@ async def start_docking_uniprot(request: DockingUniProtRequest, background_tasks
     """
     protein_file_path = os.path.join(LOCAL_PROTEIN_DIR, f"{request.uniprot_id}.pdb")
     if not os.path.exists(protein_file_path):
-        raise HTTPException(status_code=404, detail=f"Protein file for UniProt ID {request.uniprot_id} not found.")
+        try:
+            protein_file_path = unzip_ent_gz(request.uniprot_id, LOCAL_PROTEIN_DIR, LOCAL_PROTEIN_DIR)
+        except FileNotFoundError:
+            raise HTTPException(status_code = 404, detail=f"Protein file for UniProt ID {request.uniprot_id} not found.")
     
+    # Add docking process as background task
     background_tasks.add_task(process_docking_request_uniprot, request.callback_url, protein_file_path, request.ligand)
+
+    # Schedule cleanup of the unzipped .pdb file
+    background_tasks.add_task(cleanup_pdb_file, protein_file_path)
+    
     return {
         "message": "Docking task started. You will be notified at your callback URL upon completion."
     }
