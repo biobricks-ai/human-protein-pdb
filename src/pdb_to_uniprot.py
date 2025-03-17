@@ -4,6 +4,12 @@ import time
 import glob
 import pandas as pd
 
+'''
+Note:
+    Some PDB IDs map to multiple UniProt IDs (in multi-chain structures), resulting in ambiguities.
+    The provided method maps PDB IDs to the primary UniProt accession.
+    You may need manual verification or more detailed chain-specific mappings via RCSB PDB API if needed.
+'''
 
 def map_pdb_to_uniprot(pdb_ids):
     url = 'https://rest.uniprot.org/idmapping/run'
