@@ -13,8 +13,9 @@ WORKDIR /home/appuser/DiffDock
 # Copy the service file and local protein files into the container.
 COPY diffdock_docking_service.py /home/appuser/DiffDock
 
-# Copy protein folder 
-COPY local_proteins/ /home/appuser/DiffDock/local_proteins/
+# Copy protein folder
+COPY ../download/ /home/appuser/DiffDock/local_proteins/
+COPY local_proteins/* /home/appuser/DiffDock/local_proteins/
 
 ## Copy the CSV mapping file.
 #COPY rename_mapping.csv /app/rename_mapping.csv
