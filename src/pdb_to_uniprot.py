@@ -68,10 +68,14 @@ def rename_files(directory, pdb_ids):
 
 def get_pdb_ids(directory):
     # pdb_ids = ['1CBS', '4HHB', '1STP']  # Example list of PDB IDs
-    pdb_ids = glob.glob(directory + '*.pdb')
-    prefix_length = len('pdb')
-    # filename format is "pdb{id}.{extension}", so isolate "{id}" and make it uppercase
-    pdb_ids = [os.path.basename(pdb_id)[prefix_length:].split('.')[0].upper() for pdb_id in pdb_ids]
+    pdb_ids = glob.glob(directory + '*.gz')
+
+    # prefix_length = len('pdb')
+    # # filename format is "pdb{id}.{extension}", so isolate "{id}" and make it uppercase
+    # pdb_ids = [os.path.basename(pdb_id)[prefix_length:].split('.')[0].upper() for pdb_id in pdb_ids]
+
+    # filename format is "{id}.{extension}", so isolate "{id}" and make it uppercase
+    pdb_ids = [os.path.basename(pdb_id).split('.')[0].upper() for pdb_id in pdb_ids]
     return pdb_ids
 
 

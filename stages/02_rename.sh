@@ -5,14 +5,12 @@
 # Get local path
 localpath=$(pwd)
 srcpath=$(pwd)/src
+downloadpath="$localpath/download"
+
 echo "Local path: $localpath"
-
-FILE=$srcpath/pdb_ids.txt
-
-# Create the download directory
-export downloadpath="$localpath/download"
 echo "Download path: $downloadpath"
-cd $downloadpath;
+
+cd $downloadpath
 
 # Run renaming script within the download directory
 python $srcpath/pdb_to_uniprot.py | tee rename.log
