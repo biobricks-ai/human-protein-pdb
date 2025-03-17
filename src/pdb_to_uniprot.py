@@ -48,15 +48,16 @@ def map_pdb_to_uniprot(pdb_ids):
     return df
 
 
-def rename_files(directory, pdb_ids):
+def rename_files(directory, fnames, pdb_ids):
     df_mapping = map_pdb_to_uniprot(pdb_ids)
 
-    for _, row in df_mapping.iterrows():
-        pdb_id = row['PDB_ID'].lower()
+    for i, row in df_mapping.iterrows():
         uniprot_id = row['UniProt_ID']
         
-        old_filename = os.path.join(directory, f'pdb{pdb_id}.pdb')
-        new_filename = os.path.join(directory, f'{uniprot_id}.pdb')
+        # pdb_id = row['PDB_ID'].lower()
+        # old_filename = os.path.join(directory, f'pdb{pdb_id}.pdb')
+        old_filename = fnames[i]
+        new_filename = os.path.join(directory, f'{uniprot_id}.pdb.gz')
 
         # Check if file exists before renaming
         if os.path.isfile(old_filename):
@@ -68,22 +69,38 @@ def rename_files(directory, pdb_ids):
 
 def get_pdb_ids(directory):
     # pdb_ids = ['1CBS', '4HHB', '1STP']  # Example list of PDB IDs
-    pdb_ids = glob.glob(directory + '*.gz')
+    fnames = glob.glob(directory + '*.gz')
 
     # prefix_length = len('pdb')
     # # filename format is "pdb{id}.{extension}", so isolate "{id}" and make it uppercase
     # pdb_ids = [os.path.basename(pdb_id)[prefix_length:].split('.')[0].upper() for pdb_id in pdb_ids]
 
     # filename format is "{id}.{extension}", so isolate "{id}" and make it uppercase
-    pdb_ids = [os.path.basename(pdb_id).split('.')[0].upper() for pdb_id in pdb_ids]
-    return pdb_ids
+    pdb_ids = [os.path.basename(pdb_id).split('.')[0].upper() for pdb_id in fnames]
+    return fnames, pdb_ids
+
+
+def batch_iterable(iterable, batch_size):
+    for i in range(0, len(iterable), batch_size):
+        yield iterable[i:i + batch_size]
 
 
 def main():
-    # Directory containing pdb files
-    directory = './download/'
-    pdb_ids = get_pdb_ids(directory)
-    rename_files(directory, pdb_ids)
+    # Directory containing gzipped pdb files
+    directory = './'
+    fnames, pdb_ids = get_pdb_ids(directory)
+
+    # Batch process to avoid hitting API rate limits
+    indices = list(range(len(pdb_ids)))
+    batch_size = 10000  # Adjust as needed
+
+    for batch_indices in batch_iterable(indices, batch_size):
+        batch_fnames = [fnames[i] for i in batch_indices]
+        batch_pdb_ids = [pdb_ids[i] for i in batch_indices]
+
+        rename_files(directory, batch_fnames, batch_pdb_ids)
+
+    # rename_files(directory, fnames, pdb_ids)
 
 
 if __name__ == '__main__':
