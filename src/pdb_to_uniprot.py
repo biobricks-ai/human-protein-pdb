@@ -23,9 +23,9 @@ def map_pdb_to_uniprot(pdb_ids):
     job_id = response.json()['jobId']
 
     # Check job status until completion
-    result_url = f'https://rest.uniprot.org/idmapping/status/{job_id}'
+    status_url = f'https://rest.uniprot.org/idmapping/status/{job_id}'
     while True:
-        status_response = requests.get(result_url).json()
+        status_response = requests.get(status_url).json()
 
         job_status = status_response.get('jobStatus')
         
@@ -45,8 +45,10 @@ def map_pdb_to_uniprot(pdb_ids):
             raise Exception(f"Job failed or returned unexpected status: {status_response}")
 
     # Get results
-    results_link = status_response['results']
-    results_response = requests.get(results_link).json()
+    # results_link = status_response['results']
+    # results_response = requests.get(results_link).json()
+    results_url = f'https://rest.uniprot.org/idmapping/uniprotkb/results/{job_id}'
+    results_response = requests.get(results_url).json()
 
     # Convert results to a DataFrame
     mappings = []
