@@ -31,8 +31,8 @@ def map_pdb_to_uniprot(pdb_ids):
 
         if job_status == 'RUNNING':
             time.sleep(3)
-        elif job_status == 'FINISHED':
-            # Job explicitly completed
+        elif job_status == 'FINISHED' or 'results' in status_response:
+            # If finished explicitly or results are available, we break successfully
             warnings = status_response.get('warnings', [])
             failed_ids = status_response.get('failedIds', [])
             if warnings:
@@ -41,13 +41,11 @@ def map_pdb_to_uniprot(pdb_ids):
                 print(f"API failed to map these IDs: {failed_ids}")
             break
         else:
-            # Check if the response is malformed or unexpected
             raise Exception(f"Job failed or returned unexpected status: {status_response}")
 
-    # Retrieve results explicitly after confirmed completion
+    # Continue fetching results explicitly
     results_url = f'https://rest.uniprot.org/idmapping/uniprotkb/results/{job_id}'
     results_response = requests.get(results_url).json()
-
 
     # # Get results
     # # results_link = status_response['results']
