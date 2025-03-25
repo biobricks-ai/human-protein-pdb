@@ -108,7 +108,7 @@ def main():
 
     # Batch process to avoid hitting API rate limits
     indices = list(range(len(pdb_ids)))
-    batch_size = 10000  # Adjust as needed
+    batch_size = 500  # Adjust as needed
 
     for batch_indices in batch_iterable(indices, batch_size):
         batch_fnames = [fnames[i] for i in batch_indices]
