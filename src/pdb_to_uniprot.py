@@ -64,28 +64,69 @@ def map_pdb_to_uniprot(pdb_ids):
     return df
 
 
-def rename_files(directory, fnames, pdb_ids):
+def sifts_remap(unmapped_ids, sifts_df):
+    remapped = {}
+    for pdb_id in unmapped_ids:
+        matches = sifts_df[sifts_df['PDB'] == pdb_id.lower()]
+        if not matches.empty:
+            remapped[pdb_id] = matches['SP_PRIMARY'].iloc[0]  # Using the first available UniProt mapping
+    return remapped
+
+
+def rename_files(directory, fnames, pdb_ids, sifts_df):
     df_mapping = map_pdb_to_uniprot(pdb_ids)
+    mapping_dict = dict(zip(df_mapping['PDB_ID'].str.upper(), df_mapping['UniProt_ID']))
 
-    for i, row in df_mapping.iterrows():
-        uniprot_id = row['UniProt_ID']
-        
-        # pdb_id = row['PDB_ID'].lower()
-        # old_filename = os.path.join(directory, f'pdb{pdb_id}.pdb')
-        old_filename = fnames[i]
-        new_filename = os.path.join(directory, f'{uniprot_id}.pdb.gz')
+    unmapped_ids = []
 
-        # Check if file exists before renaming
-        if os.path.isfile(old_filename):
-            os.rename(old_filename, new_filename)
-            # print(f'Renamed {old_filename} -> {new_filename}')
+    # Identify IDs not mapped by UniProt
+    for pdb_id, fname in zip(pdb_ids, fnames):
+        uniprot_id = mapping_dict.get(pdb_id)
+        if uniprot_id:
+            new_fname = os.path.join(directory, f'{uniprot_id}.pdb')
+            if os.path.isfile(fname):
+                os.rename(fname, new_fname)
+                # print(f'Renamed {fname} -> {new_fname}')  # Uncomment for verbose output
+            else:
+                print(f'File {fname} not found, skipping.')
         else:
-            print(f'File {old_filename} not found.')
+            unmapped_ids.append((pdb_id, fname))
+            print(f'No UniProt ID found for {pdb_id}, will try SIFTS.')
+
+    # Attempt SIFTS remapping for remaining unmapped IDs
+    if unmapped_ids:
+        pdb_ids_unmapped_only = [pid for pid, _ in unmapped_ids]
+        sifts_mappings = sifts_remap(pdb_ids_unmapped_only, sifts_df)
+
+        still_unmapped_ids = []
+        for pdb_id, fname in unmapped_ids:
+            if pdb_id in sifts_mappings:
+                uniprot_id = sifts_mappings[pdb_id]
+                new_fname = os.path.join(directory, f'{uniprot_id}.pdb')
+                if os.path.isfile(fname):
+                    os.rename(fname, new_fname)
+                    print(f'SIFTS remapped {fname} -> {new_fname}')
+                else:
+                    print(f'SIFTS mapping file {fname} not found, skipping.')
+            else:
+                print(f'No SIFTS mapping found for {pdb_id}, skipping.')
+                still_unmapped_ids.append(pdb_id)
+
+        # Write IDs that are still unmapped after SIFTS to the CSV
+        if still_unmapped_ids:
+            with open('unmapped_ids.csv', 'a') as f:
+                for id in still_unmapped_ids:
+                    f.write(f"{id}\n")
 
 
 def get_pdb_ids(directory):
     # pdb_ids = ['1CBS', '4HHB', '1STP']  # Example list of PDB IDs
     fnames = glob.glob(directory + '*.gz')
+
+    # exclude filenames with pdb.gz extension
+    for i in range(len(fnames) - 1, -1, -1):  # Iterate in reverse order
+        if 'pdb.gz' in fnames[i]:
+            fnames.pop(i)
 
     # prefix_length = len('pdb')
     # # filename format is "pdb{id}.{extension}", so isolate "{id}" and make it uppercase
@@ -106,6 +147,11 @@ def main():
     directory = './'
     fnames, pdb_ids = get_pdb_ids(directory)
 
+    # Load SIFTS mappings (ensure this file is downloaded and placed in working directory)
+    sifts_df = pd.read_csv('pdb_chain_uniprot.tsv', sep='\t', skiprows=1,
+                           names=['PDB', 'CHAIN', 'SP_PRIMARY', 'RES_BEG', 'RES_END', 
+                                  'PDB_BEG', 'PDB_END', 'SP_BEG', 'SP_END'])
+
     # Batch process to avoid hitting API rate limits
     indices = list(range(len(pdb_ids)))
     batch_size = 500  # Adjust as needed
@@ -114,9 +160,9 @@ def main():
         batch_fnames = [fnames[i] for i in batch_indices]
         batch_pdb_ids = [pdb_ids[i] for i in batch_indices]
 
-        rename_files(directory, batch_fnames, batch_pdb_ids)
+        rename_files(directory, batch_fnames, batch_pdb_ids, sifts_df)
 
-    # rename_files(directory, fnames, pdb_ids)
+    # rename_files(directory, fnames, pdb_ids)  # Uncomment for single batch processing
 
 
 if __name__ == '__main__':
