@@ -83,7 +83,7 @@ def rename_files(directory, fnames, pdb_ids, sifts_df):
     for pdb_id, fname in zip(pdb_ids, fnames):
         uniprot_id = mapping_dict.get(pdb_id)
         if uniprot_id:
-            new_fname = os.path.join(directory, f'{uniprot_id}.pdb')
+            new_fname = os.path.join(directory, f'{uniprot_id}.pdb.gz')
             if os.path.isfile(fname):
                 os.rename(fname, new_fname)
                 # print(f'Renamed {fname} -> {new_fname}')  # Uncomment for verbose output
@@ -102,7 +102,7 @@ def rename_files(directory, fnames, pdb_ids, sifts_df):
         for pdb_id, fname in unmapped_ids:
             if pdb_id in sifts_mappings:
                 uniprot_id = sifts_mappings[pdb_id]
-                new_fname = os.path.join(directory, f'{uniprot_id}.pdb')
+                new_fname = os.path.join(directory, f'{uniprot_id}.pdb.gz')
                 if os.path.isfile(fname):
                     os.rename(fname, new_fname)
                     print(f'SIFTS remapped {fname} -> {new_fname}')
