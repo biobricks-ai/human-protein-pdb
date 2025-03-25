@@ -28,27 +28,32 @@ def map_pdb_to_uniprot(pdb_ids):
         status_response = requests.get(status_url).json()
 
         job_status = status_response.get('jobStatus')
-        
+
         if job_status == 'RUNNING':
             time.sleep(3)
         elif job_status == 'FINISHED':
-            break
-        elif ('failedIds' in status_response) or ('warnings' in status_response):
-            # API completed but with warnings or issues
+            # Job explicitly completed
             warnings = status_response.get('warnings', [])
             failed_ids = status_response.get('failedIds', [])
-            print(f"API returned warnings: {warnings}")
-            print(f"API failed to map these IDs: {failed_ids}")
-            break  # Still break here since the job technically finished.
+            if warnings:
+                print(f"API returned warnings: {warnings}")
+            if failed_ids:
+                print(f"API failed to map these IDs: {failed_ids}")
+            break
         else:
-            # Real failure case
+            # Check if the response is malformed or unexpected
             raise Exception(f"Job failed or returned unexpected status: {status_response}")
 
-    # Get results
-    # results_link = status_response['results']
-    # results_response = requests.get(results_link).json()
+    # Retrieve results explicitly after confirmed completion
     results_url = f'https://rest.uniprot.org/idmapping/uniprotkb/results/{job_id}'
     results_response = requests.get(results_url).json()
+
+
+    # # Get results
+    # # results_link = status_response['results']
+    # # results_response = requests.get(results_link).json()
+    # results_url = f'https://rest.uniprot.org/idmapping/uniprotkb/results/{job_id}'
+    # results_response = requests.get(results_url).json()
 
     # Convert results to a DataFrame
     mappings = []
