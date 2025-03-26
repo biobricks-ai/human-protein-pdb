@@ -7,6 +7,11 @@ USER 0
 # Install curl
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
+# Install NVIDIA Container Toolkit dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nvidia-cuda-toolkit \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory inside the container.
 WORKDIR /home/appuser/DiffDock
 
@@ -38,6 +43,9 @@ SHELL ["/bin/bash", "-c"]
 
 # Initialize the shell and activate the diffdock environment.
 RUN eval "$(micromamba shell hook bash)" && micromamba activate diffdock
+
+# Install PyTorch with GPU support (CUDA)
+RUN micromamba run -n diffdock pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118/torch_stable.html
 
 # Expose the port that uvicorn will listen on.
 EXPOSE 8000

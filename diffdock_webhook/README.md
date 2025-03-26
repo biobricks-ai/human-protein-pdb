@@ -4,9 +4,16 @@ Usage:
 ```
 docker build -t diffdock_service .
 ```
+To run without GPU support:
 ```
 docker run -d --name diffdock_service -p 8000:8000 diffdock_service
 ```
+To run with GPU support:
+```
+docker run -d --name diffdock_service --gpus all -p 8000:8000 diffdock_service
+```
+
+To make a specific docking request:
 ```
 curl -X POST "http://127.0.0.1:8000/start_docking_uniprot" \
      -H "Content-Type: application/json" \
