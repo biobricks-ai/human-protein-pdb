@@ -13,7 +13,7 @@ echo "Download path: $downloadpath"
 cd $downloadpath
 
 # Run renaming script within the download directory
-python $srcpath/pdb_to_uniprot.py 2>&1 | tee rename.log
+python $srcpath/pdb_to_uniprot.py $srcpath 2>&1 | tee rename.log
 
 echo "Renaming done."
 cd $localpath

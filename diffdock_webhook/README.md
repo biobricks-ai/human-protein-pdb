@@ -1,4 +1,4 @@
-The current Docker environment assumes the existence of a local directory of proteins called `local_proteins/`. Each file in `local_proteins/` is a `.pdb` file named `${uniprot_id}.pdb`
+The current Docker environment assumes the existence of a local directory of proteins called `local_proteins/` or `../download/`, the latter being the result of running `dvc repro` from the home directory. Each file from either protein directory should be a `.pdb.gz` file named `${uniprot_id}.pdb.gz` in order to be copied and work in the webhook service.
 
 Usage:
 ```

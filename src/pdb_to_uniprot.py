@@ -1,4 +1,5 @@
 import os
+import sys
 import requests
 import time
 import glob
@@ -142,13 +143,13 @@ def batch_iterable(iterable, batch_size):
         yield iterable[i:i + batch_size]
 
 
-def main():
+def main(tsv_dir):
     # Directory containing gzipped pdb files
     directory = './'
     fnames, pdb_ids = get_pdb_ids(directory)
 
     # Load SIFTS mappings (ensure this file is downloaded and placed in working directory)
-    sifts_df = pd.read_csv('pdb_chain_uniprot.tsv', sep='\t', skiprows=1,
+    sifts_df = pd.read_csv(tsv_dir + 'pdb_chain_uniprot.tsv', sep='\t', skiprows=1,
                            names=['PDB', 'CHAIN', 'SP_PRIMARY', 'RES_BEG', 'RES_END', 
                                   'PDB_BEG', 'PDB_END', 'SP_BEG', 'SP_END'])
 
@@ -166,4 +167,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        tsv_dir = sys.argv[1]
+    else:
+        tsv_dir = './'
+
+    main(tsv_dir)
