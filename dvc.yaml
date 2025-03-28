@@ -15,3 +15,11 @@ stages:
       - stages/01_download.sh
     outs:
       - download
+  rename:
+    cmd: stages/02_rename.sh
+    deps:
+      - stages/02_rename.sh
+  move_proteins:
+    cmd: stages/03_move_proteins.sh
+    deps:
+      - stages/03_move_proteins.sh
