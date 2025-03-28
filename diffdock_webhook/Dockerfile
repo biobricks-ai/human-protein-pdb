@@ -24,8 +24,10 @@ RUN mkdir -p $LOCAL_PROTEIN_DIR
 
 # Copy protein folder(s) into the container.
 # Use a shell command to avoid errors if no files match.
-RUN if [ -d "../download" ]; then cp ../download/*.pdb.gz $LOCAL_PROTEIN_DIR 2>/dev/null || true; fi
-RUN if [ -d "local_proteins" ]; then cp local_proteins/*.pdb.gz $LOCAL_PROTEIN_DIR 2>/dev/null || true; 
+# COPY *.pdb *.pdb.gz $LOCAL_PROTEIN_DIR
+COPY local_proteins/{*.pdb,*.pdb.gz} $LOCAL_PROTEIN_DIR
+# RUN if [ -d "../download" ]; then cp ../download/*.pdb.gz $LOCAL_PROTEIN_DIR 2>/dev/null || true; fi
+# RUN if [ -d "local_proteins" ]; then cp local_proteins/* $LOCAL_PROTEIN_DIR 2>/dev/null || true;  fi
 
 ## Copy the CSV mapping file.
 #COPY rename_mapping.csv /app/rename_mapping.csv
@@ -45,7 +47,8 @@ SHELL ["/bin/bash", "-c"]
 RUN eval "$(micromamba shell hook bash)" && micromamba activate diffdock
 
 # Install PyTorch with GPU support (CUDA)
-RUN micromamba run -n diffdock pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118/torch_stable.html
+# RUN micromamba run -n diffdock pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118/torch_stable.html
+# RUN micromamba run -n diffdock pip install --upgrade --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118/torch_stable.html
 
 # Expose the port that uvicorn will listen on.
 EXPOSE 8000

@@ -1,4 +1,4 @@
-The current Docker environment assumes the existence of a local directory of proteins called `local_proteins/` or `../download/`, the latter being the result of running `dvc repro` from the home directory. Each file from either protein directory should be a `.pdb.gz` file named `${uniprot_id}.pdb.gz` in order to be copied and work in the webhook service.
+The current Docker environment assumes the existence of a local directory of proteins called `local_proteins/`. Each file from `local_proteins/` should be a `.pdb` or `.pdb.gz` file named `${uniprot_id}.{extension}` in order to be copied and work in the webhook service.
 
 Usage:
 ```
@@ -24,6 +24,11 @@ Replace `your_uniprot_id`, `your_ligand_smiles`, and `http://your-callback-url/e
 To check the container log:
 ```
 docker logs -f diffdock_service
+```
+
+To enter the running and execute arbitrary commands:
+```
+docker exec -it diffdock_service sh
 ```
 
 To stop the running container:
