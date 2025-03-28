@@ -21,7 +21,7 @@ curl -X POST "http://127.0.0.1:8000/start_docking_uniprot" \
 ```
 Replace `your_uniprot_id`, `your_ligand_smiles`, and `http://your-callback-url/endpoint` with the appropriate values.
 
-To check the container log:
+To check the container log (`Ctrl` + `C` to stop):
 ```
 docker logs -f diffdock_service
 ```
