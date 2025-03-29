@@ -25,7 +25,7 @@ RUN mkdir -p $LOCAL_PROTEIN_DIR
 # Copy protein folder(s) into the container.
 # Use a shell command to avoid errors if no files match.
 # COPY *.pdb *.pdb.gz $LOCAL_PROTEIN_DIR
-COPY local_proteins/*.pdb, local_proteins/*.pdb.gz $LOCAL_PROTEIN_DIR
+COPY local_proteins/*.pdb local_proteins/*.pdb.gz $LOCAL_PROTEIN_DIR
 # RUN if [ -d "../download" ]; then cp ../download/*.pdb.gz $LOCAL_PROTEIN_DIR 2>/dev/null || true; fi
 # RUN if [ -d "local_proteins" ]; then cp local_proteins/* $LOCAL_PROTEIN_DIR 2>/dev/null || true;  fi
 
