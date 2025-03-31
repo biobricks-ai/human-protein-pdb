@@ -26,7 +26,7 @@ To check the container log (`Ctrl` + `C` to stop):
 docker logs -f diffdock_service
 ```
 
-To enter the running and execute arbitrary commands:
+To enter the running container and execute arbitrary commands:
 ```
 docker exec -it diffdock_service sh
 ```
