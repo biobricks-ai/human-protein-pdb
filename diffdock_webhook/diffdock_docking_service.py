@@ -6,6 +6,7 @@ import tempfile
 import httpx
 import gzip
 import shutil
+import traceback
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
@@ -25,6 +26,8 @@ def unzip_pdb_gz(uniprot_id, source_dir, dest_dir):
     """
     pdb_gz_file = os.path.join(source_dir, f"{uniprot_id}.pdb.gz")
     pdb_file = os.path.join(dest_dir, f"{uniprot_id}.pdb")
+
+    print(f"Attempting to unzip {pdb_gz_file} to {pdb_file}")
 
     if not os.path.exists(pdb_file):
         if not os.path.exists(pdb_gz_file):
@@ -57,6 +60,10 @@ async def start_docking_uniprot(request: DockingUniProtRequest, background_tasks
         except FileNotFoundError:
             raise HTTPException(status_code = 404, detail=f"Protein file for UniProt ID {request.uniprot_id} not found.")
     
+    # Make sure unzipping process returned a valid file
+    if os.path.getsize(protein_file_path) < 500:  # 500 bytes is a rough threshold for a valid PDB file.
+        raise HTTPException(status_code=400, detail=f"Unzipped PDB file for {request.uniprot_id} looks suspiciously small.")
+
     # Add docking process as background task
     background_tasks.add_task(process_docking_request_uniprot, request.callback_url, protein_file_path, request.ligand)
 
@@ -97,7 +104,10 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
         )
         stdout, stderr = await proc.communicate()
         if proc.returncode != 0:
-            raise Exception(f"DiffDock failed with error: {stderr.decode()}")
+            e = Exception(f"DiffDock failed with return code {proc.returncode}")
+            e.stderr = stderr
+            e.stdout = stdout  # optional, if you also want to forward stdout
+            raise e
         
         # The results are expected in the 'complex_0' subdirectory.
         complex_dir = os.path.join(output_dir, "complex_0")
@@ -156,11 +166,16 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
             response.raise_for_status()
     except Exception as e:
         # Handle exceptions (e.g., log or retry as necessary)
-        # # Create an error payload to notify the callback URL
+        tb_str = traceback.format_exc()
+        stderr_info = getattr(e, "stderr", "").decode(errors="ignore") if hasattr(e, "stderr") else ""
+
+        # Create an error payload to notify the callback URL
         error_payload = {
             "status": "failed",
             "error": str(e),
-            "error_code": 500  # You can use any appropriate error code
+            "traceback": tb_str,
+            "stderr": stderr_info,
+            "error_code": 500
         }
         async with httpx.AsyncClient() as client:
             try:
@@ -169,4 +184,4 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
             except Exception as post_error:
                 # Log the failure to notify the callback URL if necessary
                 print(f"Failed to send error callback: {post_error}")
-        print(f"Error processing docking request for UniProt: {e}")
+        print(f"Error processing docking request for UniProt:\n{tb_str}")
