@@ -4,14 +4,18 @@ Usage:
 ```
 docker build -t diffdock_service .
 ```
-To run without GPU support:
-```
-docker run -d --name diffdock_service -p 8000:8000 diffdock_service
-```
-To run with GPU support:
-```
-docker run -d --name diffdock_service --gpus all -p 8000:8000 diffdock_service
-```
+- To run without GPU support:  
+    ```bash
+    docker run -d --name diffdock_service -p 8000:8000 diffdock_service
+    ```
+    - If more memory is needed:  
+        ```bash
+        docker run -d -m 8g --memory-swap 8g --name diffdock_service -p 8000:8000 diffdock_service
+        ```
+- To run with GPU support:  
+    ```bash
+    docker run -d --name diffdock_service --gpus all -p 8000:8000 diffdock_service
+    ```
 
 To make a specific docking request:
 ```
