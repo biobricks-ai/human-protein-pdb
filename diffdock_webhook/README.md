@@ -8,9 +8,9 @@ docker build -t diffdock_service .
     ```bash
     docker run -d --name diffdock_service -p 8000:8000 diffdock_service
     ```
-    - If more memory is needed:  
+    - If more memory is needed (`12g` can be replaced as needed):  
         ```bash
-        docker run -d -m 8g --memory-swap 8g --name diffdock_service -p 8000:8000 diffdock_service
+        docker run -d -m 12g --memory-swap 12g --name diffdock_service -p 8000:8000 diffdock_service
         ```
 - To run with GPU support:  
     ```bash
