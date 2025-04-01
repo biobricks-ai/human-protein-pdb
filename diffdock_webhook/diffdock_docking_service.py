@@ -9,6 +9,7 @@ import shutil
 import traceback
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
+from rdkit import Chem
 
 app = FastAPI()
 
@@ -19,6 +20,11 @@ class DockingUniProtRequest(BaseModel):
     uniprot_id: str  # The UniProt ID, e.g., A0A4P8L7K3.
     ligand: str      # The ligand as a SMILES string.
     callback_url: str  # The URL where the client will receive the docking results.
+
+
+def is_valid_smiles(smiles: str) -> bool:
+    return Chem.MolFromSmiles(smiles) is not None
+
 
 def unzip_pdb_gz(uniprot_id, source_dir, dest_dir):
     """
@@ -39,12 +45,14 @@ def unzip_pdb_gz(uniprot_id, source_dir, dest_dir):
     
     return pdb_file
 
+
 def cleanup_pdb_file(pdb_file):
     """
     Deletes the .pdb file to save space.
     """
     if os.path.exists(pdb_file):
         os.remove(pdb_file)
+
 
 @app.post("/start_docking_uniprot")
 async def start_docking_uniprot(request: DockingUniProtRequest, background_tasks: BackgroundTasks):
@@ -53,6 +61,10 @@ async def start_docking_uniprot(request: DockingUniProtRequest, background_tasks
     directory for a file named '<uniprot_id>.pdb'. If found, its path is used for the DiffDock command.
     Otherwise, an exception is thrown.
     """
+    # Validate the ligand SMILES string
+    if not is_valid_smiles(request.ligand):
+        raise HTTPException(status_code=400, detail=f"Invalid SMILES string provided for ligand: {request.ligand}.")
+
     protein_file_path = os.path.join(LOCAL_PROTEIN_DIR, f"{request.uniprot_id}.pdb")
     if not os.path.exists(protein_file_path):
         try:
@@ -67,12 +79,13 @@ async def start_docking_uniprot(request: DockingUniProtRequest, background_tasks
     # Add docking process as background task
     background_tasks.add_task(process_docking_request_uniprot, request.callback_url, protein_file_path, request.ligand)
 
-    # Schedule cleanup of the unzipped .pdb file
-    background_tasks.add_task(cleanup_pdb_file, protein_file_path)
+    # # Schedule cleanup of the unzipped .pdb file
+    # background_tasks.add_task(cleanup_pdb_file, protein_file_path)
     
     return {
         "message": "Docking task started. You will be notified at your callback URL upon completion."
     }
+
 
 async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
     """
@@ -87,6 +100,8 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
     named like 'rank1_confidence0.17.sdf'. This function extracts the docking score from the filename and 
     reads the entire file content as the pose.
     """
+    print(f"Running docking for UniProt ID: {uniprot_id}, Ligand: {ligand}")
+
     with tempfile.TemporaryDirectory() as tmpdirname:
         output_dir = tmpdirname  # Use the temporary directory for docking results.
         command = [
@@ -102,7 +117,16 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
+
         stdout, stderr = await proc.communicate()
+        # Print stdout to log
+        print("=== DiffDock STDOUT ===")
+        print(stdout.decode())
+        # Print stderr to log
+        print("=== DiffDock STDERR ===")
+        print(stderr.decode())
+        print("=======================")
+
         if proc.returncode != 0:
             e = Exception(f"DiffDock failed with return code {proc.returncode}")
             e.stderr = stderr
@@ -112,11 +136,11 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
         # The results are expected in the 'complex_0' subdirectory.
         complex_dir = os.path.join(output_dir, "complex_0")
         if not os.path.exists(complex_dir):
-            raise Exception(f"complex_0 directory not created. Inference might have failed silently.")
+            raise Exception("Docking completed but no pose was generated. This may happen if DiffDock was unable to sample a valid pose for the given protein-ligand pair.")
 
         files = glob.glob(os.path.join(complex_dir, "rank1_confidence*.sdf"))
         if not files:
-            raise Exception("Docking output file not found in expected directory.")
+            raise Exception("No docking pose was generated. DiffDock may have failed to sample a valid pose for this protein-ligand pair.")
         docking_file = files[0]
         
         # Extract the docking score from the filename.
@@ -152,6 +176,7 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
         }
         return docking_result
 
+
 async def process_docking_request_uniprot(callback_url: str, protein_file_path: str, ligand: str):
     """
     Processes the docking request by performing docking using the provided UniProt protein file and 
@@ -173,8 +198,12 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
         stderr_info = getattr(e, "stderr", "").decode(errors="ignore") if hasattr(e, "stderr") else ""
 
         # Create an error payload to notify the callback URL
+        error_type = "no_pose_generated" if "No docking pose was generated" in str(e) else "inference_error"
         error_payload = {
             "status": "failed",
+            "error_type": error_type,
+            "uniprot_id": docking_result.get("uniprot_id", None),
+            "ligand": ligand,
             "error": str(e),
             "traceback": tb_str,
             "stderr": stderr_info,
