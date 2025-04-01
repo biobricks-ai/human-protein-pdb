@@ -32,7 +32,7 @@ docker logs -f diffdock_service
 
 To enter the running container and execute arbitrary commands:
 ```
-docker exec -it diffdock_service sh
+docker exec -it diffdock_service /bin/bash
 ```
 
 To stop the running container:

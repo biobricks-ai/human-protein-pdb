@@ -111,6 +111,9 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
         
         # The results are expected in the 'complex_0' subdirectory.
         complex_dir = os.path.join(output_dir, "complex_0")
+        if not os.path.exists(complex_dir):
+            raise Exception(f"complex_0 directory not created. Inference might have failed silently.")
+
         files = glob.glob(os.path.join(complex_dir, "rank1_confidence*.sdf"))
         if not files:
             raise Exception("Docking output file not found in expected directory.")
