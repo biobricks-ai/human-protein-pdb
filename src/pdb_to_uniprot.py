@@ -172,4 +172,7 @@ if __name__ == '__main__':
     else:
         tsv_dir = './'
 
+    if not tsv_dir.endswith('/'):
+        tsv_dir += '/'
+
     main(tsv_dir)

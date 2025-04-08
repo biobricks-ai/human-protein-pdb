@@ -12,6 +12,12 @@ echo "Download path: $downloadpath"
 
 cd $downloadpath
 
+# Remove "pdb" prefix from filenames
+for file in pdb*; do
+    newfile=$(echo "$file" | sed 's/^pdb//')
+    mv "$file" "$newfile"
+done
+
 # Run renaming script within the download directory
 python $srcpath/pdb_to_uniprot.py $srcpath 2>&1 | tee rename.log
 

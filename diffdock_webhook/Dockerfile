@@ -4,13 +4,21 @@ FROM rbgcsail/diffdock
 # Ensure we're running as root.
 USER 0
 
-# Install curl
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Install system dependencies.
+# Use apt-get to install the required packages.
+RUN apt-get update && \
+apt-get install -y --no-install-recommends \
+    curl \
+    python3 \
+    python3-pip \
+    build-essential \
+    cmake \
+    nvidia-cuda-toolkit && \
+rm -rf /var/lib/apt/lists/*
 
-# Install NVIDIA Container Toolkit dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nvidia-cuda-toolkit \
-    && rm -rf /var/lib/apt/lists/*
+# Upgrade pip and install required Python packages.
+RUN pip3 install --upgrade pip && \
+    pip3 install --no-cache-dir uvicorn httpx fastapi rdkit
 
 # Set working directory inside the container.
 WORKDIR /home/appuser/DiffDock
@@ -24,14 +32,8 @@ RUN mkdir -p $LOCAL_PROTEIN_DIR
 
 # Copy protein folder(s) into the container.
 # Use a shell command to avoid errors if no files match.
-# COPY *.pdb *.pdb.gz $LOCAL_PROTEIN_DIR
 COPY local_proteins/*.pdb local_proteins/*.pdb.gz $LOCAL_PROTEIN_DIR
-# RUN if [ -d "../download" ]; then cp ../download/*.pdb.gz $LOCAL_PROTEIN_DIR 2>/dev/null || true; fi
-# RUN if [ -d "local_proteins" ]; then cp local_proteins/* $LOCAL_PROTEIN_DIR 2>/dev/null || true;  fi
 
-## Copy the CSV mapping file.
-#COPY rename_mapping.csv /app/rename_mapping.csv
-#
 ## Create the target directory and copy files with dereferenced symlinks.
 #RUN mkdir -p /app/local_proteins && \
 #    cp -aL /tmp/local_proteins/. /app/local_proteins/
@@ -57,7 +59,7 @@ EXPOSE 8000
 ENTRYPOINT []
 
 # Start the uvicorn server in the foreground.
-CMD /bin/bash -c "micromamba run -n diffdock uvicorn diffdock_docking_service:app --host 0.0.0.0 --port 8000 --reload"
+CMD ["python3", "-m", "uvicorn", "diffdock_docking_service:app", "--host", "0.0.0.0", "--port", "8000"]
+# CMD /bin/bash -c "micromamba run -n diffdock uvicorn diffdock_docking_service:app --host 0.0.0.0 --port 8000"
 ## Start the uvicorn server in the background.
 #CMD /bin/bash -c "nohup uvicorn diffdock_docking_service:app --host 0.0.0.0 --port 8000 --reload 2>&1 &"
-
