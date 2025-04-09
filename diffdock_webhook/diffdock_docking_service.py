@@ -26,6 +26,17 @@ def is_valid_smiles(smiles: str) -> bool:
     return Chem.MolFromSmiles(smiles) is not None
 
 
+def uniprot_id_from_path(protein_file_path: str) -> str:
+    """
+    Extracts the UniProt ID from the protein file path.
+    """
+    match = re.search(r'/([^/]+)\.pdb$', protein_file_path)
+    if match:
+        return match.group(1)
+    else:
+        raise ValueError("Invalid protein file path: Unable to extract UniProt ID.")
+
+
 def unzip_pdb_gz(uniprot_id, source_dir, dest_dir):
     """
     Unzips a .pdb.gz file to .pdb.
@@ -100,6 +111,7 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
     named like 'rank1_confidence0.17.sdf'. This function extracts the docking score from the filename and 
     reads the entire file content as the pose.
     """
+    uniprot_id = uniprot_id_from_path(protein_file_path)
     print(f"Running docking for UniProt ID: {uniprot_id}, Ligand: {ligand}")
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -162,10 +174,6 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
         # Read the entire file content as the docking pose.
         with open(docking_file, "r") as f:
             pose_contents = f.read()
-
-        # isolate the uniprot_id from the protein_file_path
-        match = re.search(r'/([^/]+)\.pdb$', protein_file_path)
-        uniprot_id = match.group(1)
         
         docking_result = {
             "docking_score": docking_score,
@@ -196,6 +204,7 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
         # Handle exceptions (e.g., log or retry as necessary)
         tb_str = traceback.format_exc()
         stderr_info = getattr(e, "stderr", "").decode(errors="ignore") if hasattr(e, "stderr") else ""
+        uniprot_id = uniprot_id_from_path(protein_file_path)
 
         # Create an error payload to notify the callback URL
         error_type = "no_pose_generated" if "No docking pose was generated" in str(e) else "inference_error"

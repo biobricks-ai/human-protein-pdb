@@ -10,6 +10,7 @@ RUN apt-get update && \
 apt-get install -y --no-install-recommends \
     curl \
     python3 \
+    python-is-python3 \
     python3-pip \
     build-essential \
     cmake \
