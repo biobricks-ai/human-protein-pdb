@@ -8,10 +8,29 @@ import gzip
 import shutil
 import traceback
 from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from rdkit import Chem
 
-app = FastAPI()
+app = FastAPI(
+    title="Diffdock",
+    description="Dock small molecules onto human proteins using DiffDock.",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
+
+@app.get("/.well-known/tool.json", include_in_schema=False)
+def get_tool_json():
+    return JSONResponse({
+        "id": "diffdock",
+        "name": "DiffDock",
+        "description": "Dock small molecules onto human proteins using DiffDock.",
+        "publisher": "Insilica, LLC.", 
+        "url": "https://human-protein-docking.toxindex.com",
+        "apiSpecUrl": "https://human-protein-docking.toxindex.com/openapi.json"
+    })
 
 # Directory where local protein files are stored.
 LOCAL_PROTEIN_DIR = "./local_proteins"
