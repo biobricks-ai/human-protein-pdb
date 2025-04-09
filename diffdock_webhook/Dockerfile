@@ -19,7 +19,8 @@ rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip and install required Python packages.
 RUN pip3 install --upgrade pip && \
-    pip3 install --no-cache-dir uvicorn httpx fastapi rdkit
+    pip3 install --no-cache-dir pandas uvicorn httpx fastapi rdkit pyyaml && \
+    pip3 install --no-cache-dir torch torch_geometric e3nn esm fair-esm # torch_cluster
 
 # Set working directory inside the container.
 WORKDIR /home/appuser/DiffDock
