@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  fastapi:
+    build:
+      context: ./  # adjust if your Dockerfile isn't at root
+    container_name: diffdock_fastapi
+    expose:
+      - "8000"
+    networks:
+      - diffdock-net
+
+  nginx:
+    image: nginx:latest
+    container_name: diffdock_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - fastapi
+    networks:
+      - diffdock-net
+
+networks:
+  diffdock-net:
+    driver: bridge
