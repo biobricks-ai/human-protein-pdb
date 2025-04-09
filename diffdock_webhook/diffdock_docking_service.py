@@ -211,7 +211,7 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
         error_payload = {
             "status": "failed",
             "error_type": error_type,
-            "uniprot_id": docking_result.get("uniprot_id", None),
+            "uniprot_id": uniprot_id,
             "ligand": ligand,
             "error": str(e),
             "traceback": tb_str,
