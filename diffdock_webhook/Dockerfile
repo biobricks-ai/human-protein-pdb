@@ -15,16 +15,20 @@ apt-get install -y --no-install-recommends \
     python3-dev \
     build-essential \
     cmake \
+    git \
     nvidia-cuda-toolkit && \
 rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and install required Python packages.
+# Copy (modified) DiffDock requirements.txt and pip install for consistency
+COPY requirements.txt .
 RUN pip3 install --upgrade pip && \
-    pip3 install --no-cache-dir pandas uvicorn httpx fastapi rdkit pyyaml && \
-    pip3 install --no-cache-dir torch torch_geometric e3nn esm fair-esm
-
-# Install torch_cluster separately
-RUN pip3 install --no-cache-dir torch_cluster==1.6.0
+    pip3 install --no-cache-dir pandas uvicorn httpx fastapi rdkit pyyaml biopython && \
+    pip3 install --no-cache-dir torch==1.13.1 triton==2.0.0 && \
+    pip3 install --no-cache-dir deepspeed==0.5.9 --no-deps && \
+    pip3 install --no-cache-dir fair-esm==2.0.0 && \
+    pip3 install --no-cache-dir prody && \
+    pip3 install --no-cache-dir -r requirements.txt
+    #pip3 install --no-cache-dir prody==2.1.1 && \
 
 # Set working directory inside the container.
 WORKDIR /home/appuser/DiffDock
@@ -67,5 +71,3 @@ ENTRYPOINT []
 # Start the uvicorn server in the foreground.
 CMD ["python3", "-m", "uvicorn", "diffdock_docking_service:app", "--host", "0.0.0.0", "--port", "8000"]
 # CMD /bin/bash -c "micromamba run -n diffdock uvicorn diffdock_docking_service:app --host 0.0.0.0 --port 8000"
-## Start the uvicorn server in the background.
-#CMD /bin/bash -c "nohup uvicorn diffdock_docking_service:app --host 0.0.0.0 --port 8000 --reload 2>&1 &"
