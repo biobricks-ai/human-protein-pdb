@@ -32,7 +32,7 @@ async def get_tool_json():
         "apiSpecUrl": "https://diffdock.toxindex.com/openapi.json"
     })
 
-# add a new endpoint for a health check which jst returns 200 OK
+# add a new endpoint for a health check which just returns 200 OK
 @app.get("/health")
 async def health_check():
     """
