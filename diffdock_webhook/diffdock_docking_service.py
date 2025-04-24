@@ -22,15 +22,28 @@ app = FastAPI(
 )
 
 @app.get("/.well-known/tool.json", include_in_schema=False)
-def get_tool_json():
+async def get_tool_json():
     return JSONResponse({
         "id": "diffdock",
         "name": "DiffDock",
         "description": "Dock small molecules onto human proteins using DiffDock.",
         "publisher": "Insilica, LLC.", 
-        "url": "https://human-protein-docking.toxindex.com",
-        "apiSpecUrl": "https://human-protein-docking.toxindex.com/openapi.json"
+        "url": "https://diffdock.toxindex.com",
+        "apiSpecUrl": "https://diffdock.toxindex.com/openapi.json"
     })
+
+# add a new endpoint for a health check which jst returns 200 OK
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint.
+    """
+    return JSONResponse(
+        {
+            "status": "OK",
+            "message": "DiffDock API is running",
+        }
+    )
 
 # Directory where local protein files are stored.
 LOCAL_PROTEIN_DIR = "./local_proteins"
