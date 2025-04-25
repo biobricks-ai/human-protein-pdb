@@ -21,6 +21,18 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+'''
+    Root endpoint to provide a simple confirmation that the service is running.
+    This allows NGINX reverse proxy requests to the site root ('/') to return a valid response
+    instead of a 404 error. While the main API endpoints are located at specific paths
+    (e.g., /health, /docs, /openapi.json), this root handler ensures that accessing
+    the base domain (https://diffdock.toxindex.com/) provides informative feedback
+    rather than an error page.
+'''
+@app.get("/", include_in_schema=False)
+async def root():
+    return {"message": "DiffDock API is running. Use /docs or /health to explore."}
+
 @app.get("/.well-known/tool.json", include_in_schema=False)
 async def get_tool_json():
     return JSONResponse({
