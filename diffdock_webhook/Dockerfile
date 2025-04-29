@@ -9,6 +9,7 @@ USER 0
 RUN apt-get update && \
 apt-get install -y --no-install-recommends \
     curl \
+    redis-server \
     python3 \
     python-is-python3 \
     python3-pip \
