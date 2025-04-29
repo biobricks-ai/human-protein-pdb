@@ -23,6 +23,7 @@ rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip3 install --upgrade pip && \
     pip3 install --no-cache-dir pandas uvicorn httpx fastapi rdkit pyyaml biopython && \
+    pip3 install --no-cache-dir celery redis celery[redis] && \
     pip3 install --no-cache-dir torch==1.13.1 triton==2.0.0 && \
     pip3 install --no-cache-dir deepspeed==0.5.9 --no-deps && \
     pip3 install --no-cache-dir fair-esm==2.0.0 && \
@@ -35,6 +36,10 @@ WORKDIR /home/appuser/DiffDock
 
 # Copy the service file and local protein files into the container.
 COPY diffdock_docking_service.py /home/appuser/DiffDock
+
+# Add the launcher
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 # Create a directory for local protein files.
 ENV LOCAL_PROTEIN_DIR=/home/appuser/DiffDock/local_proteins
@@ -66,7 +71,7 @@ RUN eval "$(micromamba shell hook bash)" && micromamba activate diffdock
 EXPOSE 8000
 
 # Override the default entrypoint.
-ENTRYPOINT []
+ENTRYPOINT [ "/start.sh" ]
 
 # Start the uvicorn server in the foreground.
 CMD ["python3", "-m", "uvicorn", "diffdock_docking_service:app", "--host", "0.0.0.0", "--port", "8000"]
