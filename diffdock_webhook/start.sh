@@ -11,7 +11,7 @@ for i in $(seq 0 $((GPU_COUNT-1))); do
   echo "Starting Celery worker on GPU $i"
   CUDA_VISIBLE_DEVICES=$i \
     celery -A diffdock_docking_service.celery_app worker \
-      --concurrency=1 \
+      --concurrency=4 \
       --hostname worker_gpu${i}@%h \
       --loglevel=info \
     &
