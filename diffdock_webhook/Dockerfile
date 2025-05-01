@@ -22,8 +22,14 @@ RUN micromamba run -n diffdock pip install --no-cache-dir -r /tmp/requirements.t
 FROM rbgcsail/diffdock                            AS runtime
 WORKDIR /home/appuser/DiffDock
 
-# bring the fully-baked micromamba env across
-COPY --from=build /opt/conda/envs/diffdock /opt/conda/envs/diffdock
+# pull the env + micromamba executable from the builder
+COPY --from=build --chown=appuser:appuser \
+      /home/appuser/micromamba   /home/appuser/micromamba
+COPY --from=build --chown=appuser:appuser \
+      /home/appuser/bin          /home/appuser/bin
+
+ENV MAMBA_ROOT_PREFIX=/home/appuser/micromamba
+ENV PATH=/home/appuser/bin:$PATH
 
 # app code – last because you change it most often
 COPY diffdock_docking_service.py start.sh celeryconfig.py ./
