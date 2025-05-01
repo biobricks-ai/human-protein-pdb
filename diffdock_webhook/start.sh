@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-# ── Activate micromamba env so celery/uvicorn are on PATH ────────────
-eval "$(/home/appuser/micromamba/bin/micromamba shell hook --shell bash)"
-micromamba activate diffdock            # name of the env built in Dockerfile
+# ── make the env’s bin dir visible ────────────────────────────────
+export PATH="/home/appuser/micromamba/envs/diffdock/bin:$PATH"
 
 # 1) start Redis in the background
 redis-server --daemonize yes
