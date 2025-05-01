@@ -81,7 +81,7 @@ class DockingUniProtRequest(BaseModel):
     callback_url:str
 
 @app.post("/start_docking_uniprot")
-def start_docking_uniprot(request: DockingUniProtRequest):
+async def start_docking_uniprot(request: DockingUniProtRequest):
     """
     Enqueue docking via Celery instead of BackgroundTasks.
     """
