@@ -42,6 +42,9 @@ COPY diffdock_docking_service.py /home/appuser/DiffDock
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
+# Copy Celery config into the app folder (the Python working directory)
+COPY celeryconfig.py /home/appuser/DiffDock/celeryconfig.py
+
 # Create a directory for local protein files.
 ENV LOCAL_PROTEIN_DIR=/home/appuser/DiffDock/local_proteins
 RUN mkdir -p $LOCAL_PROTEIN_DIR

@@ -14,6 +14,8 @@ for i in $(seq 0 $((GPU_COUNT-1))); do
       --concurrency=4 \
       --hostname worker_gpu${i}@%h \
       --loglevel=info \
+      --max-tasks-per-child=1 \
+      --config=celery_config \
     &
 done
 
