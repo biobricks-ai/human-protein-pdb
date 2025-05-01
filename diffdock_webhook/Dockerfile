@@ -20,6 +20,13 @@ RUN micromamba run -n diffdock pip install --no-cache-dir -r /tmp/requirements.t
 
 # ---------- runtime stage (slim) ----------
 FROM rbgcsail/diffdock                            AS runtime
+USER root
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        redis-server && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /home/appuser/DiffDock
 
 # pull the env + micromamba executable from the builder
