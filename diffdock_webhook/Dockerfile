@@ -33,7 +33,7 @@ ENV PATH=/home/appuser/bin:$PATH
 
 # app code – last because you change it most often
 COPY diffdock_docking_service.py start.sh celeryconfig.py ./
-RUN chmod +x /start.sh
+RUN chmod +x ./start.sh
 
 # protein data live on a volume; no image bloat
 VOLUME /home/appuser/DiffDock/local_proteins
