@@ -13,13 +13,13 @@ GPU_COUNT=$(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l)
 for i in $(seq 0 $((GPU_COUNT-1))); do
   echo "Starting Celery worker on GPU $i"
   CUDA_VISIBLE_DEVICES=$i \
-    celery -A diffdock_docking_service.celery_app worker \
-      --concurrency=4 \
-      --hostname worker_gpu${i}@%h \
-      --loglevel=info \
-      --max-tasks-per-child=1 \
-      --config=celery_config \
-    &
+    celery --app=diffdock_docking_service.celery_app \
+          --config=celeryconfig \
+          worker \
+          --concurrency=4 \
+          --hostname worker_gpu${i}@%h \
+          --loglevel=info \
+          --max-tasks-per-child=1 &
 done
 
 # # 2) launch the Celery worker
