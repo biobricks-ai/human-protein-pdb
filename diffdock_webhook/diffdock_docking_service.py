@@ -1,16 +1,21 @@
+import os
 import asyncio
 import re
 import glob
-import os
 import tempfile
 import httpx
 import gzip
 import shutil
 import traceback
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from rdkit import Chem
+
+# new imports
+from celery import Celery
+from celery.result import AsyncResult
 
 app = FastAPI(
     title="Diffdock",
@@ -21,14 +26,34 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-'''
-    Root endpoint to provide a simple confirmation that the service is running.
-    This allows NGINX reverse proxy requests to the site root ('/') to return a valid response
-    instead of a 404 error. While the main API endpoints are located at specific paths
-    (e.g., /health, /docs, /openapi.json), this root handler ensures that accessing
-    the base domain (https://diffdock.toxindex.com/) provides informative feedback
-    rather than an error page.
-'''
+# ----------------------------------------------------------------
+# Celery setup (adjust URLs as needed or via ENV)
+# ----------------------------------------------------------------
+CELERY_BROKER_URL     = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
+
+celery_app = Celery(
+    "diffdock_queue",
+    broker=CELERY_BROKER_URL,
+    backend=CELERY_RESULT_BACKEND,
+)
+
+# ----------------------------------------------------------------
+# Task wrapper
+# ----------------------------------------------------------------
+@celery_app.task(bind=True)
+def dock_job(self, callback_url: str, protein_file_path: str, ligand: str):
+    """
+    Celery task wrapper around your existing async function.
+    """
+    # if your process_docking_request_uniprot is async, run it in its own loop:
+    asyncio.run(process_docking_request_uniprot(callback_url, protein_file_path, ligand))
+    return {"task_id": self.request.id, "status": "dispatched"}
+
+# ----------------------------------------------------------------
+# Your existing endpoints (unchanged) + small edits
+# ----------------------------------------------------------------
+
 @app.get("/", include_in_schema=False)
 async def root():
     return {"message": "DiffDock API is running. Use /docs or /health to explore."}
@@ -44,103 +69,51 @@ async def get_tool_json():
         "apiSpecUrl": "https://diffdock.toxindex.com/openapi.json"
     })
 
-# add a new endpoint for a health check which just returns 200 OK
 @app.get("/health")
 async def health_check():
-    """
-    Health check endpoint.
-    """
-    return JSONResponse(
-        {
-            "status": "OK",
-            "message": "DiffDock API is running",
-        }
-    )
+    return JSONResponse({"status": "OK", "message": "DiffDock API is running"})
 
-# Directory where local protein files are stored.
 LOCAL_PROTEIN_DIR = "./local_proteins"
 
 class DockingUniProtRequest(BaseModel):
-    uniprot_id: str  # The UniProt ID, e.g., A0A4P8L7K3.
-    ligand: str      # The ligand as a SMILES string.
-    callback_url: str  # The URL where the client will receive the docking results.
-
-
-def is_valid_smiles(smiles: str) -> bool:
-    return Chem.MolFromSmiles(smiles) is not None
-
-
-def uniprot_id_from_path(protein_file_path: str) -> str:
-    """
-    Extracts the UniProt ID from the protein file path.
-    """
-    match = re.search(r'/([^/]+)\.pdb$', protein_file_path)
-    if match:
-        return match.group(1)
-    else:
-        raise ValueError("Invalid protein file path: Unable to extract UniProt ID.")
-
-
-def unzip_pdb_gz(uniprot_id, source_dir, dest_dir):
-    """
-    Unzips a .pdb.gz file to .pdb.
-    """
-    pdb_gz_file = os.path.join(source_dir, f"{uniprot_id}.pdb.gz")
-    pdb_file = os.path.join(dest_dir, f"{uniprot_id}.pdb")
-
-    print(f"Attempting to unzip {pdb_gz_file} to {pdb_file}")
-
-    if not os.path.exists(pdb_file):
-        if not os.path.exists(pdb_gz_file):
-            raise FileNotFoundError(f"Source file {pdb_gz_file} not found.")
-        
-        with gzip.open(pdb_gz_file, 'rb') as f_in:
-            with open(pdb_file, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-    
-    return pdb_file
-
-
-def cleanup_pdb_file(pdb_file):
-    """
-    Deletes the .pdb file to save space.
-    """
-    if os.path.exists(pdb_file):
-        os.remove(pdb_file)
-
+    uniprot_id:  str
+    ligand:      str
+    callback_url:str
 
 @app.post("/start_docking_uniprot")
-async def start_docking_uniprot(request: DockingUniProtRequest, background_tasks: BackgroundTasks):
+async def start_docking_uniprot(request: DockingUniProtRequest):
     """
-    Endpoint to start the docking process using a UniProt ID. The server searches the local protein
-    directory for a file named '<uniprot_id>.pdb'. If found, its path is used for the DiffDock command.
-    Otherwise, an exception is thrown.
+    Enqueue docking via Celery instead of BackgroundTasks.
     """
-    # Validate the ligand SMILES string
     if not is_valid_smiles(request.ligand):
-        raise HTTPException(status_code=400, detail=f"Invalid SMILES string provided for ligand: {request.ligand}.")
+        raise HTTPException(400, f"Invalid SMILES: {request.ligand}")
 
+    # your existing file-locating / unzip logic
     protein_file_path = os.path.join(LOCAL_PROTEIN_DIR, f"{request.uniprot_id}.pdb")
     if not os.path.exists(protein_file_path):
         try:
             protein_file_path = unzip_pdb_gz(request.uniprot_id, LOCAL_PROTEIN_DIR, LOCAL_PROTEIN_DIR)
         except FileNotFoundError:
-            raise HTTPException(status_code = 404, detail=f"Protein file for UniProt ID {request.uniprot_id} not found.")
-    
-    # Make sure unzipping process returned a valid file
-    if os.path.getsize(protein_file_path) < 500:  # 500 bytes is a rough threshold for a valid PDB file.
-        raise HTTPException(status_code=400, detail=f"Unzipped PDB file for {request.uniprot_id} looks suspiciously small.")
+            raise HTTPException(404, f"Protein {request.uniprot_id} not found")
+    if os.path.getsize(protein_file_path) < 500:
+        raise HTTPException(400, f"PDB for {request.uniprot_id} looks too small")
 
-    # Add docking process as background task
-    background_tasks.add_task(process_docking_request_uniprot, request.callback_url, protein_file_path, request.ligand)
+    # enqueue and return a task ID
+    task = dock_job.delay(request.callback_url, protein_file_path, request.ligand)
+    return {"message": "Docking enqueued", "task_id": task.id}
 
-    # # Schedule cleanup of the unzipped .pdb file
-    # background_tasks.add_task(cleanup_pdb_file, protein_file_path)
-    
-    return {
-        "message": "Docking task started. You will be notified at your callback URL upon completion."
-    }
-
+@app.get("/jobs/{task_id}")
+def get_job_status(task_id: str):
+    """
+    Simple status endpoint for Celery tasks.
+    """
+    res = AsyncResult(task_id, app=celery_app)
+    data = {"task_id": task_id, "status": res.status}
+    if res.status == "SUCCESS":
+        data["result"] = res.result
+    elif res.status == "FAILURE":
+        data["error"] = str(res.result)
+    return JSONResponse(data)
 
 async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
     """
@@ -227,8 +200,20 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
             "ligand": ligand
         }
         return docking_result
+    
+def is_valid_smiles(smiles: str) -> bool:
+    return Chem.MolFromSmiles(smiles) is not None
 
-
+def uniprot_id_from_path(protein_file_path: str) -> str:
+    """
+    Extracts the UniProt ID from the protein file path.
+    """
+    match = re.search(r'/([^/]+)\.pdb$', protein_file_path)
+    if match:
+        return match.group(1)
+    else:
+        raise ValueError("Invalid protein file path: Unable to extract UniProt ID.")
+    
 async def process_docking_request_uniprot(callback_url: str, protein_file_path: str, ligand: str):
     """
     Processes the docking request by performing docking using the provided UniProt protein file and 
@@ -270,3 +255,22 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
                 # Log the failure to notify the callback URL if necessary
                 print(f"Failed to send error callback: {post_error}")
         print(f"Error processing docking request for UniProt:\n{tb_str}")
+
+def unzip_pdb_gz(uniprot_id, source_dir, dest_dir):
+    """
+    Unzips a .pdb.gz file to .pdb.
+    """
+    pdb_gz_file = os.path.join(source_dir, f"{uniprot_id}.pdb.gz")
+    pdb_file = os.path.join(dest_dir, f"{uniprot_id}.pdb")
+
+    print(f"Attempting to unzip {pdb_gz_file} to {pdb_file}")
+
+    if not os.path.exists(pdb_file):
+        if not os.path.exists(pdb_gz_file):
+            raise FileNotFoundError(f"Source file {pdb_gz_file} not found.")
+        
+        with gzip.open(pdb_gz_file, 'rb') as f_in:
+            with open(pdb_file, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+    
+    return pdb_file
