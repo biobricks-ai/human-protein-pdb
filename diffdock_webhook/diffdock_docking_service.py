@@ -252,13 +252,15 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
         error_payload = {
             "status": "failed",
             "error_type": error_type,
-            "uniprot_id": uniprot_id,
-            "ligand": ligand,
             "retry_count": retry_count,
             "error": str(e),
             "traceback": tb_str,
             "stderr": stderr_info,
-            "error_code": 500
+            "error_code": 500,
+            "result": {
+                "uniprot_id": uniprot_id,
+                "ligand": ligand,
+            },
         }
         async with httpx.AsyncClient() as client:
             try:
