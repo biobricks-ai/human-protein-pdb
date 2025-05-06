@@ -42,12 +42,12 @@ celery_app = Celery(
 # Task wrapper
 # ----------------------------------------------------------------
 @celery_app.task(bind=True)
-def dock_job(self, callback_url: str, protein_file_path: str, ligand: str):
+def dock_job(self, callback_url: str, protein_file_path: str, ligand: str, retry_count: int = 0):
     """
     Celery task wrapper around your existing async function.
     """
     # if your process_docking_request_uniprot is async, run it in its own loop:
-    asyncio.run(process_docking_request_uniprot(callback_url, protein_file_path, ligand))
+    asyncio.run(process_docking_request_uniprot(callback_url, protein_file_path, ligand, retry_count))
     return {"task_id": self.request.id, "status": "dispatched"}
 
 # ----------------------------------------------------------------
@@ -79,6 +79,7 @@ class DockingUniProtRequest(BaseModel):
     uniprot_id:  str
     ligand:      str
     callback_url:str
+    retry_count: int = 0
 
 @app.post("/start_docking_uniprot")
 async def start_docking_uniprot(request: DockingUniProtRequest):
@@ -99,7 +100,12 @@ async def start_docking_uniprot(request: DockingUniProtRequest):
         raise HTTPException(400, f"PDB for {request.uniprot_id} looks too small")
 
     # enqueue and return a task ID
-    task = dock_job.delay(request.callback_url, protein_file_path, request.ligand)
+    task = dock_job.delay(
+        request.callback_url,
+        protein_file_path,
+        request.ligand,
+        request.retry_count
+    )
     return {"message": "Docking enqueued", "task_id": task.id}
 
 @app.get("/jobs/{task_id}")
@@ -214,7 +220,7 @@ def uniprot_id_from_path(protein_file_path: str) -> str:
     else:
         raise ValueError("Invalid protein file path: Unable to extract UniProt ID.")
     
-async def process_docking_request_uniprot(callback_url: str, protein_file_path: str, ligand: str):
+async def process_docking_request_uniprot(callback_url: str, protein_file_path: str, ligand: str, retry_count: int = 0):
     """
     Processes the docking request by performing docking using the provided UniProt protein file and 
     sending the result to the client's callback URL. The temporary directory for docking outputs is 
@@ -224,7 +230,8 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
         docking_result = await perform_docking_uniprot(protein_file_path, ligand)
         payload = {
             "status": "completed",
-            "result": docking_result
+            "result": docking_result,
+            "retry_count": retry_count
         }
         async with httpx.AsyncClient() as client:
             response = await client.post(callback_url, json=payload)
@@ -242,6 +249,7 @@ async def process_docking_request_uniprot(callback_url: str, protein_file_path: 
             "error_type": error_type,
             "uniprot_id": uniprot_id,
             "ligand": ligand,
+            "retry_count": retry_count,
             "error": str(e),
             "traceback": tb_str,
             "stderr": stderr_info,
