@@ -17,6 +17,8 @@ from rdkit import Chem
 from celery import Celery
 from celery.result import AsyncResult
 
+DEFAULT_BATCH_SIZE = 10
+
 app = FastAPI(
     title="Diffdock",
     description="Dock small molecules onto human proteins using DiffDock.",
@@ -42,12 +44,12 @@ celery_app = Celery(
 # Task wrapper
 # ----------------------------------------------------------------
 @celery_app.task(bind=True)
-def dock_job(self, callback_url: str, protein_file_path: str, ligand: str, retry_count: int = 0):
+def dock_job(self, callback_url: str, protein_file_path: str, ligand: str, retry_count: int = 0, batch_size: int = DEFAULT_BATCH_SIZE):
     """
     Celery task wrapper around your existing async function.
     """
     # if your process_docking_request_uniprot is async, run it in its own loop:
-    asyncio.run(process_docking_request_uniprot(callback_url, protein_file_path, ligand, retry_count))
+    asyncio.run(process_docking_request_uniprot(callback_url, protein_file_path, ligand, retry_count, batch_size))
     return {"task_id": self.request.id, "status": "dispatched"}
 
 # ----------------------------------------------------------------
@@ -80,6 +82,7 @@ class DockingUniProtRequest(BaseModel):
     ligand:      str
     callback_url:str
     retry_count: int = 0
+    batch_size:  int = DEFAULT_BATCH_SIZE
 
 @app.post("/start_docking_uniprot")
 async def start_docking_uniprot(request: DockingUniProtRequest):
@@ -104,7 +107,8 @@ async def start_docking_uniprot(request: DockingUniProtRequest):
         request.callback_url,
         protein_file_path,
         request.ligand,
-        request.retry_count
+        request.retry_count,
+        request.batch_size,
     )
     return {"message": "Docking enqueued", "task_id": task.id}
 
@@ -121,7 +125,7 @@ def get_job_status(task_id: str):
         data["error"] = str(res.result)
     return JSONResponse(data)
 
-async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
+async def perform_docking_uniprot(protein_file_path: str, ligand: str, batch_size: int = DEFAULT_BATCH_SIZE) -> dict:
     """
     Performs the docking process using DiffDock for a protein file provided by a UniProt ID.
     
@@ -144,7 +148,8 @@ async def perform_docking_uniprot(protein_file_path: str, ligand: str) -> dict:
             "--config", "default_inference_args.yaml",
             "--protein_path", protein_file_path,
             "--ligand", ligand,
-            "--out_dir", output_dir
+            "--out_dir", output_dir,
+            "--batch_size", str(batch_size),
         ]
         
         proc = await asyncio.create_subprocess_exec(
@@ -220,14 +225,14 @@ def uniprot_id_from_path(protein_file_path: str) -> str:
     else:
         raise ValueError("Invalid protein file path: Unable to extract UniProt ID.")
     
-async def process_docking_request_uniprot(callback_url: str, protein_file_path: str, ligand: str, retry_count: int = 0):
+async def process_docking_request_uniprot(callback_url: str, protein_file_path: str, ligand: str, retry_count: int = 0, batch_size: int = DEFAULT_BATCH_SIZE):
     """
     Processes the docking request by performing docking using the provided UniProt protein file and 
     sending the result to the client's callback URL. The temporary directory for docking outputs is 
     automatically deleted once processing is complete.
     """
     try:
-        docking_result = await perform_docking_uniprot(protein_file_path, ligand)
+        docking_result = await perform_docking_uniprot(protein_file_path, ligand, batch_size)
         payload = {
             "status": "completed",
             "result": docking_result,
