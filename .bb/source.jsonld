@@ -1,0 +1,43 @@
+{
+  "@context": "../../context/source.context.jsonld",
+  "@type": "dcat:Dataset",
+  "@id": "https://biobricks.ai/bricks/human-protein-pdb",
+  "dcterms:title": "RCSB Protein Data Bank (PDB) human protein structure files",
+  "dcterms:description": "A collection of human protein structure files (pdb.gz) downloaded from the RCSB Protein Data Bank. The brick fetches structures for a curated list of human (taxonomy 9606) PDB IDs (src/pdb_ids.txt) from the RCSB PDB archive at files.rcsb.org for use in docking workflows. The upstream data is the worldwide/RCSB Protein Data Bank experimental structure archive.",
+  "dcterms:license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "dcterms:creator": "RCSB Protein Data Bank / worldwide Protein Data Bank (wwPDB)",
+  "dcterms:publisher": "RCSB Protein Data Bank",
+  "dcterms:identifier": "https://www.rcsb.org/",
+  "biobricks:licenseName": "CC0 1.0",
+  "biobricks:licenseClass": "open",
+  "biobricks:merckCommercialUse": "permitted",
+  "biobricks:licenseEvidence": [
+    {
+      "source": "https://www.rcsb.org/pages/usage-policy",
+      "quote": "data files contained in the PDB archive are available under the CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+      "confidence": "high"
+    },
+    {
+      "source": "src/batch_download.py",
+      "quote": "BASE_URL = \"https://files.rcsb.org/pub/pdb/data/structures/all\"",
+      "confidence": "high"
+    },
+    {
+      "source": "/mnt/raid2/biobricks/human-protein-pdb/README.md",
+      "quote": "This brick downloads `pdb.gz` files from RCSB PDB. ... The list of PDB IDs is in `src/pdb_ids.txt`.",
+      "confidence": "high"
+    }
+  ],
+  "biobricks:reviewed": false,
+  "biobricks:reviewNotes": "Determined by Claude annotation agent. The brick downloads structure files from the RCSB PDB archive (files.rcsb.org, confirmed in src/batch_download.py and README). RCSB's usage policy states all PDB archive data files are released under CC0 1.0 Public Domain Dedication, which permits unrestricted redistribution and commercial use (attribution encouraged but not required). Classified open / permitted with high confidence.",
+  "prov:wasDerivedFrom": [
+    {
+      "@type": "dcat:Dataset",
+      "@id": "https://www.rcsb.org/",
+      "dcterms:title": "RCSB Protein Data Bank experimental structure archive",
+      "dcterms:license": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "dcat:downloadURL": "https://files.rcsb.org/pub/pdb/data/structures/all",
+      "dcterms:publisher": "RCSB Protein Data Bank"
+    }
+  ]
+}
